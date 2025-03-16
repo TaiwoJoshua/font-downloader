@@ -1,4 +1,4 @@
-# Font Downloader Node.js Script
+# Font Downloader
 
 This project is a Node.js script that automates the downloading of fonts from Type Network. It uses Puppeteer for web scraping, HTTPS requests for downloading, and a progress bar to track the download process efficiently. The script also detects already downloaded fonts to prevent redundant downloads.
 

@@ -18,6 +18,27 @@ This project is a Node.js script that automates the downloading of fonts from Ty
 - **cli-progress**: Displays a progress bar for better visualization.
 - **FS (File System)**: Manages file creation and directory structure.
 
+## Font Options
+
+### Font Types:
+
+- Ultra Condensed
+- Condensed
+- Default
+- Extended
+- Ultra Extended
+
+### Font Weights:
+
+- Thin
+- Light
+- Book
+- Regular
+- Medium
+- Semi Bold
+- Bold
+- Black
+
 ## Installation
 
 Ensure you have [Node.js](https://nodejs.org/) installed on your system.

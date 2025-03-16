@@ -1,0 +1,21 @@
+{
+  "name": "font-scraper",
+  "version": "1.0.0",
+  "description": "Web Font Scaper",
+  "main": "app.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"No tests specified\" && exit 1"
+  },
+  "keywords": [
+    "web-scraper",
+    "crawler"
+  ],
+  "author": "Taiwo Joshua",
+  "license": "MIT",
+  "dependencies": {
+    "cli-progress": "^3.12.0",
+    "font-scraper": "file:",
+    "puppeteer": "^13.4.0"
+  }
+}

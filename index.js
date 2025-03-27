@@ -4,55 +4,20 @@ const path = require("path");
 const puppeteer = require("puppeteer");
 const cliProgress = require("cli-progress"); // Install using: npm install cli-progress
 
-const fontTypes = [
-  "Ultra Condensed",
-  "Condensed",
-  "Default",
-  "Extended",
-  "Ultra Extended",
-];
+async function downloadFont(name, weight = "*") {
+  let weightArray = weight === "*" ? [] : weight;
+  const formattedFontWeights = weightArray.map((font) => font.toLowerCase());
 
-const fontWeights = [
-  "Thin",
-  "Light",
-  "Book",
-  "Regular",
-  "Medium",
-  "Semi Bold",
-  "Bold",
-  "Black",
-];
+  const mainLink = await findFontLink(name);
 
-async function downloadFont(name, type = "Default", weight = "Regular") {
-  let fontTypeArray =
-    type === "*" ? fontTypes : Array.isArray(type) ? type : [type];
-  let fontWeightArray =
-    weight === "*" ? fontWeights : Array.isArray(weight) ? weight : [weight];
-
-  const formattedFontTypes = fontTypeArray.map((font) =>
-    font.replace(/ /g, "-").toLowerCase()
-  );
-  const formattedFontWeights = fontWeightArray.map((font) =>
-    font.replace(/ /g, "-").toLowerCase()
-  );
-
-  const fontName = name.replace(/ /g, "-").toLowerCase();
-  const mainLink = `https://store.typenetwork.com/foundry/universalthirst/fonts/${fontName}/`;
-
-  if (!(await checkLink(mainLink))) {
-    return console.log("❌ Font not found:", capitalizeWords(name));
+  if (!mainLink) {
+    process.exit();
   }
 
-  console.log(
-    `\n📥 Starting Font Download: ${capitalizeWords(
-      name
-    )} (${type}, ${weight})\n`
-  );
+  const fontWeights = await findFontWeights(mainLink, formattedFontWeights);
 
   const browser = await puppeteer.launch({ headless: true });
-  let totalDownloads = formattedFontTypes.length * formattedFontWeights.length;
   let completedDownloads = 0;
-  let skippedDownloads = 0;
 
   const progressBar = new cliProgress.SingleBar(
     {
@@ -62,101 +27,73 @@ async function downloadFont(name, type = "Default", weight = "Regular") {
     cliProgress.Presets.shades_classic
   );
 
-  progressBar.start(totalDownloads, 0);
+  progressBar.start(fontWeights.length, 0);
 
-  for (let fontType of formattedFontTypes) {
-    fontType = fontType === "default" ? "" : fontType + "-";
-
-    for (let fontWeight of formattedFontWeights) {
-      const link = `https://store.typenetwork.com/foundry/universalthirst/fonts/${fontName}/${fontType}${fontWeight}`;
-      const skipped = await downloader(
-        browser,
-        link,
-        name,
-        fontType,
-        fontWeight
-      );
-
-      if (skipped) {
-        skippedDownloads++;
-      } else {
-        completedDownloads++;
-      }
-
-      progressBar.update(completedDownloads + skippedDownloads);
-    }
+  for (let k = 0; k < fontWeights.length; k++) {
+    const fontWeight = fontWeights[k];
 
     console.log(
-      `✅ Completed downloading all weights for Type: ${
-        capitalizeWords(fontType.replace(/-/g, " ").trim()) || "Default"
-      }\n`
+      `\n📥 Starting Font Download: ${capitalizeWords(name)} (${capitalizeWords(
+        fontWeight.fontWeight
+      )})\n`
     );
+
+    await downloader(
+      browser,
+      fontWeight.href,
+      name,
+      capitalizeWords(fontWeight.fontWeight)
+    );
+    completedDownloads++;
+    progressBar.update(completedDownloads);
   }
 
   progressBar.stop();
   await browser.close();
-  console.log("✅ Download Completed for all selected font types and weights.");
+  console.log("✅ Download Completed");
+  process.exit();
 }
 
-async function downloader(browser, link, name, type, weight) {
+async function downloader(browser, link, name, weight) {
   const displayName = `${capitalizeWords(name)} ${capitalizeWords(
-    type.replace(/-/g, " ").trim()
-  )} ${capitalizeWords(weight.replace(/-/g, " "))}`.trim();
+    weight.replace(/-/g, " ")
+  )}`.trim();
 
-  const fileName = `${name.replace(/ /g, "-")}-${type}${weight}.woff2`
-    .replace(/ /g, "")
+  const fileName = `${name.replace(/ /g, "-")}-${weight.replace(
+    / /g,
+    "-"
+  )}.woff2`
     .replace(/--/g, "-")
     .toLowerCase();
 
   const formattedName = capitalizeWords(name.replace(/-/g, " "));
-  const formattedType =
-    capitalizeWords(type.replace(/-/g, " ").trim()) || formattedName;
-  const downloadPath = path.resolve(
-    "fonts",
-    formattedName,
-    formattedType,
-    fileName
-  );
+  const downloadPath = path.resolve("fonts", formattedName, fileName);
 
   if (fs.existsSync(downloadPath)) {
     console.log(`⏭️  Skipping (Already Exists): ${displayName}`);
-    return true;
-  }
-
-  if (!(await checkLink(link))) {
-    console.log(`❌ Font not found: ${displayName}`);
-    return false;
+    return "skipped";
   }
 
   const page = await browser.newPage();
 
   async function requestListener(request) {
     const url = request.url();
-    if (url.includes("woff2")) {
-      console.log(`⬇️ Downloading: ${displayName}`);
+    if (targetURL(url)) {
+      console.log(`⬇️  Downloading: ${displayName}`);
       await downloadFile(url, downloadPath);
       console.log(`✅ Downloaded: ${displayName}\n`);
       page.off("request", requestListener);
+      return true;
     }
   }
 
-  page.on("request", requestListener);
+  page.on("request", async (request) => await requestListener(request));
   page.on("error", (error) => console.log("❌ Page error:", error));
 
   await page.goto(link, { timeout: 0, waitUntil: "networkidle2" });
   await page.close();
 
   return false;
-}
-
-async function checkLink(url) {
-  return new Promise((resolve) => {
-    const req = https.request(url, { method: "HEAD" }, (res) => {
-      resolve(res.statusCode >= 200 && res.statusCode < 400);
-    });
-    req.on("error", () => resolve(false));
-    req.end();
-  });
 }
 
 async function downloadFile(url, filePath) {
@@ -187,14 +124,124 @@ async function downloadFile(url, filePath) {
   });
 }
 
+async function findFontLink(fontName) {
+  try {
+    console.log("🔎 Searching for your Font:", fontName);
+
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+
+    const formattedFontName = fontName.toLowerCase().replace(/\s+/g, "-");
+
+    const searchUrl = `https://typenetwork.com/search?searchQuery=${encodeURIComponent(
+      fontName
+    )}`;
+    await page.goto(searchUrl, { waitUntil: "networkidle2" });
+
+    // Wait for the search results container to appear
+    await page.waitForSelector(".ba.b--light-silver.sans-serif.mv3", {
+      timeout: 10000,
+    });
+
+    // Extract and filter matching links
+    const fontLinks = await page.evaluate((formattedFontName) => {
+      return Array.from(document.querySelectorAll("a"))
+        .map((a) => ({ href: a.href, text: a.innerText.trim() }))
+        .filter((link) =>
+          new RegExp(
+            `^https://store\\.typenetwork\\.com/foundry/[^/]+/fonts/${formattedFontName}`
+          ).test(link.href)
+        );
+    }, formattedFontName);
+
+    await browser.close();
+
+    if (fontLinks.length === 0) {
+      console.log("\n❌ Font not found\n");
+      return false;
+    } else {
+      console.log("\n✅ Font found\n");
+      return fontLinks[0].href;
+    }
+  } catch (error) {
+    console.log("\n❌ Font not found\n");
+    return false;
+  }
+}
+
+async function findFontWeights(searchUrl, userWeights = []) {
+  try {
+    console.log("🔎 Searching for Available Font Weights");
+
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+
+    await page.goto(searchUrl, { timeout: 0, waitUntil: "networkidle2" });
+
+    // Wait for font listing elements to load
+    await page.waitForSelector("a", { timeout: 10000 });
+
+    // Extract the foundry and font name from the search URL
+    const urlParts = searchUrl.split("/");
+    const foundryType = urlParts[urlParts.indexOf("foundry") + 1];
+    const fontName = urlParts[urlParts.indexOf("fonts") + 1];
+
+    // Extract and filter links
+    const fontLinks = await page.evaluate(
+      (foundryType, fontName) => {
+        return Array.from(document.querySelectorAll("a"))
+          .map((a) => ({ href: a.href, text: a.innerText.trim() }))
+          .filter((link) =>
+            new RegExp(
+              `^https://store\\.typenetwork\\.com/foundry/${foundryType}/fonts/${fontName}/[^/]+$`
+            ).test(link.href)
+          )
+          .map((link) => {
+            const fontWeight = link.href.split("/").pop().replace(/-/g, " "); // Convert to readable format
+            return {
+              href: link.href,
+              fontWeight,
+            };
+          });
+      },
+      foundryType,
+      fontName
+    );
+
+    const availWeights =
+      userWeights.length > 0
+        ? fontLinks.filter((link) =>
+            userWeights.includes(link.fontWeight.toLowerCase())
+          )
+        : fontLinks;
+
+    console.log("Matching Font Links:", fontLinks);
+    await browser.close();
+
+    return availWeights;
+  } catch (error) {
+    console.log("\n❌ An Error, Unable to find Font Weights\n");
+    process.exit();
+  }
+}
+
 function capitalizeWords(str) {
   return str
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+    ?.split(" ")
+    ?.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    ?.join(" ");
+}
+
+function targetURL(url) {
+  if (url.includes("woff2")) {
+    const match = url.match(/\/(\d+)\/[^/]+$/);
+    return match ? !isNaN(match[1]) : false;
+  }
+  return false;
 }
 
 if (require.main === module) {
   const args = process.argv.slice(2);
-  downloadFont(args[0], args[1] || "*", args[2] || "*");
+  const weights = args.slice(1);
+  downloadFont(args[0], weights || "*");
 }

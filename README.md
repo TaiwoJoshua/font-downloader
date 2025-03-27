@@ -20,24 +20,17 @@ This project is a Node.js script that automates the downloading of fonts from Ty
 
 ## Font Options
 
-### Font Types:
-
-- Ultra Condensed
-- Condensed
-- Default
-- Extended
-- Ultra Extended
-
 ### Font Weights:
 
-- Thin
-- Light
-- Book
-- Regular
-- Medium
-- Semi Bold
-- Bold
-- Black
+```sh
+Thin, Ultra Light, Extra Light, Light, Book, Regular, Medium, Semi Bold, Bold, Black, Thin Italic, Ultra Light Italic, Extra Light Italic, Light Italic, Book Italic, Regular Italic, Medium Italic, Semi Bold Italic, Bold Italic, Black Italic
+```
+
+### Font Types:
+
+```sh
+Ultra Condensed, Condensed, Extended, Ultra Extended
+```
 
 ## Installation
 
@@ -54,7 +47,7 @@ npm install
 Run the script with the following command:
 
 ```sh
-node index.js "Font Name" "Font Type" "Font Weight"
+node index.js "Font Name" "Font Weight 1" "Font Weight 2"...
 ```
 
 ### Example
@@ -62,13 +55,19 @@ node index.js "Font Name" "Font Type" "Font Weight"
 To download all font types and weights for "Joie Grotesk":
 
 ```sh
-node index.js "Joie Grotesk" "*" "*"
+node index.js "Joie Grotesk"
 ```
 
 To download only "Condensed Bold" for "Joie Grotesk":
 
 ```sh
-node index.js "Joie Grotesk" "Condensed" "Bold"
+node index.js "Joie Grotesk" "Condensed Bold"
+```
+
+To download "Semi Bold, Condensed Bold, Extended Black" for "Joie Grotesk":
+
+```sh
+node index.js "Joie Grotesk" "Semi Bold" "Condensed Bold" "Extended Black"
 ```
 
 ## Project Structure
@@ -88,9 +87,8 @@ Downloaded fonts are stored in structured directories:
 ```
 fonts/
   Joie Grotesk/
-    Condensed/
-      joie-grotesk-condensed-bold.woff2
-      joie-grotesk-condensed-light.woff2
+    joie-grotesk-condensed-bold.woff2
+    joie-grotesk-condensed-light.woff2
 ```
 
 ## Contributing

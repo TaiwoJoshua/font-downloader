@@ -215,8 +215,13 @@ async function findFontWeights(searchUrl, userWeights = []) {
           )
         : fontLinks;
 
-    console.log("Matching Font Links:", fontLinks);
     await browser.close();
+
+    if (availWeights.length === 0) {
+      console.log("\n❌ Font Weights not found\n");
+    } else {
+      console.log("\n✅ Font Weights found\n");
+    }
 
     return availWeights;
   } catch (error) {
